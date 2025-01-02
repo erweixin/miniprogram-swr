@@ -1,79 +1,202 @@
-import type { TPage, TSwr } from './type';
-const cache = new Map<string, any>();
+import { cacheManager } from './cache-manager';
+import type { SwrOptions, TPage } from './type';
 
-export const swr: TSwr = (page, baseKey, fetcher, options) => {
-  const { deps = [] } = options;
-  const cacheKey = `${page.route}_${baseKey}`;
-  if (!cache.has(cacheKey)) {
-    cache.set(cacheKey, { data: undefined, isLoading: false, error: null });
+
+const mutateData = async <T>(
+  cacheKey: string,
+  fetcher: () => Promise<T>,
+  options: Partial<SwrOptions> = {}
+) => {
+  const {
+    retryLimit = 3,
+    retryInterval = 1000,
+    optimisticData,
+    onSuccess,
+    onError,
+    fireImmediately,
+  } = options;
+
+  const state = cacheManager.getState<T>(cacheKey);
+
+  if (optimisticData !== undefined) {
+    cacheManager.setState<T>(cacheKey, {
+      data: optimisticData,
+      isLoading: true
+    });
+  } else {
+    cacheManager.setState<T>(cacheKey, { isLoading: true });
   }
+
+  const attempt = async (retryCount: number): Promise<T> => {
+    try {
+      const newData = await fetcher();
+      onSuccess && onSuccess(newData);
+      cacheManager.setState<T>(cacheKey, {
+        data: newData,
+        error: null,
+        isLoading: false,
+        retryCount: 0
+      });
+      return newData;
+    } catch (error) {
+      if (retryCount < retryLimit) {
+        await new Promise(resolve => setTimeout(resolve, retryInterval));
+        return attempt(retryCount + 1);
+      }
+      onError && onError(error);
+      cacheManager.setState<T>(cacheKey, {
+        error: error as Error,
+        isLoading: false,
+        retryCount: retryCount
+      });
+      throw error;
+    }
+  };
+
+  return attempt(state.retryCount);
+};
+
+export const preload = <T>(route: string, baseKey: string, fetcher: () => Promise<T>) => {
+  const cacheKey = cacheManager.generateKey(route, baseKey);
+  return mutateData<T>(cacheKey, fetcher);
+};
+
+export const swr = <T>(page: TPage, baseKey: string, fetcher: () => Promise<T>, options: SwrOptions = {}) => {
+  const {
+    deps = [],
+    ttl = cacheManager['DEFAULT_TTL'],
+    retryLimit = 3,
+    retryInterval = 1000,
+    optimisticData,
+    onSuccess,
+    onError,
+    fireImmediately = true
+  } = options;
+
+  const cacheKey = cacheManager.generateKey(page.route, baseKey);
+
+  // 使用防抖来优化高频更新
+  const debounce = (fn: Function, delay: number) => {
+    let timer: number;
+    return (...args: any[]) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  };
+
+  const notify = () => new Promise((resolve) => {
+    const currentState = cacheManager.getState(cacheKey);
+    page.setData({
+      [`${baseKey}.data`]: currentState.data,
+      [`${baseKey}.isLoading`]: currentState.isLoading,
+      [`${baseKey}.error`]: currentState.error,
+    }, () => {
+      resolve(undefined);
+    })
+  });
+
   // 初始化页面数据
   if (!page.data[baseKey]) {
+    const state = cacheManager.getState(cacheKey);
     page.setData({
       [baseKey]: {
-        data: cache.get(cacheKey).data,
-        isLoading: cache.get(cacheKey).isLoading,
-        error: cache.get(cacheKey).error,
+        data: state.data,
+        isLoading: state.isLoading,
+        error: state.error,
       },
     });
   }
 
-  // 订阅方法：页面数据同步
-  const notify = () => {
-    const state = cache.get(cacheKey);
-    page.setData({
-      [`${baseKey}.data`]: state.data,
-      [`${baseKey}.isLoading`]: state.isLoading,
-      [`${baseKey}.error`]: state.error,
-    });
+  const mutate = async (optimisticData?: any) => {
+    try {
+      await mutateData(cacheKey, fetcher, {
+        retryLimit,
+        retryInterval,
+        optimisticData,
+        onSuccess,
+        onError
+      });
+    } finally {
+      await notify();
+    }
   };
 
-  // 数据请求及更新
-  const mutate = async () => {
-    const state = cache.get(cacheKey);
-    state.isLoading = true;
-    notify();
+  const batchMutate = async (mutations: Array<{
+    key: string;
+    fetcher: () => Promise<any>;
+    optimisticData?: any;
+  }>) => {
+    const updates = mutations.map(({ key, fetcher, optimisticData }) => ({
+      key: cacheManager.generateKey(page.route, key),
+      fetcher,
+      optimisticData
+    }));
 
     try {
-      const newData = await fetcher();
-      state.data = newData;
-      state.error = null;
-    } catch (err) {
-      state.error = err;
+      await Promise.all(
+        updates.map(({ key, fetcher, optimisticData }) =>
+          mutateData(key, fetcher, {
+            retryLimit,
+            retryInterval,
+            optimisticData,
+            onSuccess,
+            onError
+          })
+        )
+      );
     } finally {
-      state.isLoading = false;
       notify();
     }
   };
 
-  // 自动重新验证
-  mutate();
-
-  // 监听依赖变化
   const initWatcher = () => {
+    if (!page.watchers) {
+      page.watchers = {};
+    }
+
+    const debouncedMutate = debounce(mutate, 300);
+
     deps.forEach((dep) => {
-      const depKey = dep // 防止 key 冲突
-      if (!page.watchers) page.watchers = {};
-      if (!page.watchers[depKey]) {
-        // 监听器未初始化
+      if (!page.watchers[dep]) {
         Object.defineProperty(page.data, dep, {
           configurable: true,
           enumerable: true,
           get() {
-            return this[`_${depKey}`];
+            return this[`_${dep}`];
           },
           set(newVal) {
-            console.log(newVal)
-            mutate()
-            this[`_${depKey}`] = newVal;
-            // const updatedDeps = deps.map((d) => page.data[d]);
-            // observeDeps(updatedDeps); // 检测变化并重新绑定
+            this[`_${dep}`] = newVal;
+            debouncedMutate();
           },
         });
+        page.watchers[dep] = true;
       }
     });
   };
-  
-  initWatcher(); 
-  return { mutate };
-}
+
+  const shouldRevalidate = () => {
+    return cacheManager.isExpired(cacheKey, ttl);
+  };
+
+  // 处理页面卸载
+  const originalOnUnload = page.onUnload;
+  page.onUnload = function() {
+    cacheManager.clearPageCache(page.route);
+    if (originalOnUnload) {
+      originalOnUnload.call(page);
+    }
+  };
+
+  initWatcher();
+
+  if (shouldRevalidate() && fireImmediately) {
+    mutate();
+  }
+
+  return {
+    mutate,
+    batchMutate,
+    getCurrentState: () => cacheManager.getState(cacheKey),
+    revalidate: () => mutate(),
+  };
+};

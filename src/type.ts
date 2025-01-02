@@ -4,6 +4,20 @@ import'wechat-miniprogram';
  */
 export type TPage = WechatMiniprogram.Page.Instance<WechatMiniprogram.Page.DataOption, WechatMiniprogram.Page.CustomOption>;
 
+export type SwrOptions = {
+  onSuccess?: (data: any) => void,
+  onError?: (error: any) => void,
+  deps?: any[],
+  errorRetryTimes?: number,
+  refreshOnShow?: boolean,
+  refreshInterval?: number,
+  keepPreviousData?: boolean,
+  ttl?: number;
+  retryLimit?: number;
+  retryInterval?: number;
+  optimisticData?: any;
+  fireImmediately?: boolean;
+}
 /**
  * key: keyof TPage.data, fetcher 获取到的值会直接 setData 到 this.data[key] 上, 无需手动 setData
  * 而且 this.data[key] 的格式会是： {
@@ -23,15 +37,3 @@ export type TPage = WechatMiniprogram.Page.Instance<WechatMiniprogram.Page.DataO
  *  keepPreviousData: 是否保留之前的数据 默认 false
  * }
  */
-export type TSwr = (pageInstance: TPage, key: string, fetcher: () => Promise<any>, options: {
-  onSuccess?: (data: any) => void,
-  onError?: (error: any) => void,
-  deps?: any[],
-  errorRetryTimes?: number,
-  refreshOnShow?: boolean,
-  refreshInterval?: number,
-  keepPreviousData?: boolean,
-
-}) => {
-  mutate: (data: any) => void,
-};
