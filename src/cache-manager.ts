@@ -1,6 +1,6 @@
 interface CacheItem<T = any> {
   data: T;
-  isLoading: boolean;
+  isValidating: boolean;
   error: Error | null;
   timestamp: number;
   retryCount: number;
@@ -47,7 +47,7 @@ class CacheManager {
     if (!this.cache.has(key)) {
       this.cache.set(key, {
         data: undefined,
-        isLoading: false,
+        isValidating: false,
         error: null,
         timestamp: Date.now(),
         retryCount: 0,

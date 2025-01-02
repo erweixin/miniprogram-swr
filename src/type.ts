@@ -23,7 +23,7 @@ export type SwrOptions = {
  * 而且 this.data[key] 的格式会是： {
  *   data: any,
  *   error: any,
- *   isLoading: boolean,
+ *   isValidating: boolean,
  *   isValidating: boolean,
  * }
  * 

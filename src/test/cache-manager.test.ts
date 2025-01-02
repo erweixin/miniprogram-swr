@@ -27,7 +27,7 @@ describe('CacheManager', () => {
       const state = cacheManager.getState('newKey');
       expect(state).toEqual({
         data: undefined,
-        isLoading: false,
+        isValidating: false,
         error: null,
         timestamp: expect.any(Number),
         retryCount: 0,
@@ -38,7 +38,7 @@ describe('CacheManager', () => {
     test('should return existing state if key exists', () => {
       const initialState = {
         data: 'testData',
-        isLoading: false,
+        isValidating: false,
         error: null,
         timestamp: Date.now(),
         retryCount: 0,
@@ -56,12 +56,12 @@ describe('CacheManager', () => {
       cacheManager.getState(key);
       const updatedState = cacheManager.setState(key, {
         data: 'newData',
-        isLoading: true
+        isValidating: true
       });
 
       expect(updatedState).toMatchObject({
         data: 'newData',
-        isLoading: true,
+        isValidating: true,
         error: null,
         retryCount: 0
       });

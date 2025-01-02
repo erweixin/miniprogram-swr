@@ -22,10 +22,10 @@ const mutateData = async <T>(
   if (optimisticData !== undefined) {
     cacheManager.setState<T>(cacheKey, {
       data: optimisticData,
-      isLoading: true
+      isValidating: true
     });
   } else {
-    cacheManager.setState<T>(cacheKey, { isLoading: true });
+    cacheManager.setState<T>(cacheKey, { isValidating: true });
   }
 
   await notify?.();
@@ -37,7 +37,7 @@ const mutateData = async <T>(
       cacheManager.setState<T>(cacheKey, {
         data: newData,
         error: null,
-        isLoading: false,
+        isValidating: false,
         retryCount: 0
       });
       return newData;
@@ -49,7 +49,7 @@ const mutateData = async <T>(
       onError && onError(error);
       cacheManager.setState<T>(cacheKey, {
         error: error as Error,
-        isLoading: false,
+        isValidating: false,
         retryCount: retryCount
       });
       throw error;
@@ -91,7 +91,7 @@ export const swr = <T>(page: TPage, baseKey: string, fetcher: () => Promise<T>, 
     const currentState = cacheManager.getState(cacheKey);
     page.setData({
       [`${baseKey}.data`]: currentState.data,
-      [`${baseKey}.isLoading`]: currentState.isLoading,
+      [`${baseKey}.isValidating`]: currentState.isValidating,
       [`${baseKey}.error`]: currentState.error,
     }, () => {
       resolve(undefined);
@@ -104,7 +104,7 @@ export const swr = <T>(page: TPage, baseKey: string, fetcher: () => Promise<T>, 
     page.setData({
       [baseKey]: {
         data: state.data,
-        isLoading: state.isLoading,
+        isValidating: state.isValidating,
         error: state.error,
       },
     });

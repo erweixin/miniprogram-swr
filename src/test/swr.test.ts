@@ -55,7 +55,7 @@ describe('SWR and Preload', () => {
       const cachedState = cacheManager.getState(cacheKey);
       
       expect(cachedState.data).toEqual(expectedData);
-      expect(cachedState.isLoading).toBe(false);
+      expect(cachedState.isValidating).toBe(false);
       expect(cachedState.error).toBeNull();
     });
   });
@@ -66,7 +66,7 @@ describe('SWR and Preload', () => {
       
       expect(mockPage.data[baseKey]).toEqual({
         data: undefined,
-        isLoading: false,
+        isValidating: false,
         error: null,
       });
     });
@@ -85,7 +85,7 @@ describe('SWR and Preload', () => {
       
       await mutate();
       expect(mockPage.data[baseKey].data).toEqual(expectedData);
-      expect(mockPage.data[baseKey].isLoading).toBe(false);
+      expect(mockPage.data[baseKey].isValidating).toBe(false);
       expect(mockPage.data[baseKey].error).toBeNull();
     });
 
@@ -103,7 +103,7 @@ describe('SWR and Preload', () => {
 
       // Check final update
       expect(mockPage.data[baseKey].data).toEqual(finalData);
-      expect(mockPage.data[baseKey].isLoading).toBe(false);
+      expect(mockPage.data[baseKey].isValidating).toBe(false);
     });
 
     test('should retry on failure', async () => {
@@ -135,7 +135,7 @@ describe('SWR and Preload', () => {
       await mutatePromise;
       
       expect(mockPage.data[baseKey].data).toEqual({ value: 'success' });
-      expect(mockPage.data[baseKey].isLoading).toBe(false);
+      expect(mockPage.data[baseKey].isValidating).toBe(false);
     });
 
     test('should handle batch mutations', async () => {
