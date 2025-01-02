@@ -5,6 +5,7 @@ import type { SwrOptions, TPage } from './type';
 const mutateData = async <T>(
   cacheKey: string,
   fetcher: () => Promise<T>,
+  notify?: () => Promise<unknown>,
   options: Partial<SwrOptions> = {}
 ) => {
   const {
@@ -26,6 +27,8 @@ const mutateData = async <T>(
   } else {
     cacheManager.setState<T>(cacheKey, { isLoading: true });
   }
+
+  await notify?.();
 
   const attempt = async (retryCount: number): Promise<T> => {
     try {
@@ -109,7 +112,7 @@ export const swr = <T>(page: TPage, baseKey: string, fetcher: () => Promise<T>, 
 
   const mutate = async (optimisticData?: any) => {
     try {
-      await mutateData(cacheKey, fetcher, {
+      await mutateData(cacheKey, fetcher, notify, {
         retryLimit,
         retryInterval,
         optimisticData,
@@ -135,7 +138,7 @@ export const swr = <T>(page: TPage, baseKey: string, fetcher: () => Promise<T>, 
     try {
       await Promise.all(
         updates.map(({ key, fetcher, optimisticData }) =>
-          mutateData(key, fetcher, {
+          mutateData(key, fetcher, notify, {
             retryLimit,
             retryInterval,
             optimisticData,
