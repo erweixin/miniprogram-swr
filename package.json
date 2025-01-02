@@ -1,6 +1,6 @@
 {
   "name": "miniprogram-swr",
-  "version": "0.0.2-0",
+  "version": "0.0.2-1",
   "description": "Powerful asynchronous state management, server-state utilities and data fetching for the web.",
   "main": "./dist/commonjs/index.js",
   "module": "./dist/esnext/index.js",
