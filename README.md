@@ -1,4 +1,8 @@
-# MiniProgram SWR - 仍在开发中，api 不稳定，暂时不要用于生产环境
+# MiniProgram SWR
+
+[![npm](https://img.shields.io/npm/v/miniprogram-swr)](https://www.npmjs.com/package/miniprogram-swr)
+[![npm](https://img.shields.io/npm/dm/miniprogram-swr)](https://www.npmjs.com/package/miniprogram-swr)
+[![GitHub](https://img.shields.io/github/license/erweixin/miniprogram-swr)](https://img.shields.io/github/license/erweixin/miniprogram-swr)
 
 MiniProgram SWR 是一个用于微信小程序的数据请求和缓存管理工具，提供了简单易用的 API 来处理数据的获取、缓存和重新验证。
 
@@ -43,7 +47,7 @@ Page({
 <!-- 在 wxml 中使用数据 -->
 <view>{{ dataKey.data }}</view>
 <view>{{ dataKey.error }}</view>
-<view>{{ dataKey.loading }}</view>
+<view>{{ dataKey.isValidating }}</view>
 ```
 
 ## API
